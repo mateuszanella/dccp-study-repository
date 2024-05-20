@@ -15,30 +15,39 @@ A abordagem escolihda para o estudo do protocolo DCCP foi a de criar um roadmap.
 O roadmap do projeto é composto por X etapas:
 
 **1. Introdução ao protocolo DCCP**
+
 Nessa etapa, serão vistas características gerais do protocolo DCCP, explicando o que é, para que serve e como funciona.
 
 **2. História e casos de uso**
+
 Nessa etapa, será abordada a história do protocolo DCCP, bem como seus casos de uso.
 
 **3. Funcionamento do protocolo**
+
 Nessa etapa serão abordados conceitos do protocolo em mais detalhes, como o funcionamento do handshake, a forma como o protocolo lida com a congestão e a forma como o protocolo lida com a perda de pacotes
 
 **4. Tipos e formatos de pacotes**
+
 Nessa etapa, serão abordados os tipos de pacotes e seus formatos.
 
 **5. Negociação de parâmetros**
+
 Nessa etapa, será abordado como é feita a negociação de parâmetros entre cliente e servidor.
 
 **6. Processamento de eventos e checksums**
+
 Nessa etapa, serão abordados o processamento de evento e como o protocolo aplica checksums.
 
 **7. Sistema de congestão**
+
 Nessa etapa, será abordado como o protocolo lida com a congestão.
 
 **8. Implementação prática**
+
 Nessa etapa, será descrita como executar a aplicação prática da atividade.
 
 **9. Explicação do código**
+
 Nessa etapa, será explicado o código da aplicação prática.
 
 ## Referências e fontes
