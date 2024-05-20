@@ -2,6 +2,8 @@
 
 O presente repositório é o trabalho final da disciplina de Redes e Telecomunicações, ministrada pelo professor Me. Marcos André Lucas, no curso de Ciência da Computação da Universidade Regional Integrada do Alto Uruguai e das Missões Campus Erechim.
 
+Integrantes: Felipe T. Malacarne e Mateus R. Zanella.
+
 ## Introdução
 
 O objetivo desse trabalho é realizar estudos sobre o protocolo DCCP (Datagram Congestion Control Protocol), fornecendo um repostiório de estudos que deve ser prático e conciso. Por fim, a atividade requer a realização de uma apresentação prática sobre o protocolo estudado. Nesse caso, a atividade prática será uma simulação de um servidor e um cliente utilizando o protocolo DCCP.
