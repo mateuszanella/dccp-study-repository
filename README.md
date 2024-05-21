@@ -30,7 +30,7 @@ Nessa etapa serão abordados conceitos do protocolo em mais detalhes, como o fun
 
 Nessa etapa, serão abordados os tipos de pacotes e seus formatos.
 
-**5. [Negociação de parâmetros](Roadmap/5.%20Negociação%20de%20Parâmetros.md)**
+**5. [Negociação de parâmetros](Roadmap/5.%20Negociação%20e%20Parâmetros.md)**
 
 Nessa etapa, será abordado como é feita a negociação de parâmetros entre cliente e servidor.
 
