@@ -50,10 +50,20 @@ Nessa etapa, será descrita como executar a aplicação prática da atividade.
 
 Nessa etapa, será explicado o código da aplicação prática.
 
+---
+
+## Começe agora a estudar o roadmap em [Introdução ao protocolo DCCP](Roadmap/1.%20Introdução.md).
+
+---
+
 ## Referências e fontes
 
 A principal fonte utilizada neste trabalho foi a referência do protocolo no [IETF](https://datatracker.ietf.org/doc/rfc4340/). Porém, outros RFCs também foram estudados, como o [RFC 4336](https://datatracker.ietf.org/doc/rfc4336), o [RFC 4341](https://datatracker.ietf.org/doc/rfc4341) e o [RFC 5595](https://www.rfc-editor.org/rfc/rfc5595#section-1.1). Outras fontes que também foram utilizadas, podem ser encontradas na seção de refrências do Estudo Bibliográfico.
 
----
+## Links úteis
 
-## Começe agora a estudar o roadmap em [Introdução ao protocolo DCCP](Roadmap/1.%20Introdução.md).
+- [RFC 4340](https://datatracker.ietf.org/doc/rfc4340/), IETF.
+- [RFC 4336](https://datatracker.ietf.org/doc/rfc4336), IETF.
+- [RFC 4341](https://datatracker.ietf.org/doc/rfc4341), IETF.
+- [RFC 5595](https://www.rfc-editor.org/rfc/rfc5595#section-1.1), IETF.
+- [DCCP, UFRJ](https://www.gta.ufrj.br/ensino/eel879/vf/dccp), por Aramys Mattos e Marcos Benigno.
