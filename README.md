@@ -10,7 +10,7 @@ O objetivo desse trabalho é realizar estudos sobre o protocolo DCCP (Datagram C
 
 ## Roadmap
 
-A abordagem escolihda para o estudo do protocolo DCCP foi a de criar um roadmap. Um roadmap é uma ferramenta de planejamento estratégico que descreve as metas e objetivos de um projeto ou iniciativa, juntamente com os principais marcos, atividades e prazos necessários para alcançá-los.
+A abordagem escolhida para o estudo do protocolo DCCP foi a de criar um roadmap. Um roadmap é uma ferramenta de planejamento estratégico que descreve as metas e objetivos de um projeto ou iniciativa, juntamente com os principais marcos, atividades e prazos necessários para alcançá-los.
 
 O roadmap do projeto é composto por 9 etapas:
 
