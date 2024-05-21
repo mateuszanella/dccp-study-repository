@@ -6,13 +6,13 @@ Integrantes: Felipe T. Malacarne e Mateus R. Zanella.
 
 ## Objetivo do projeto
 
-O objetivo desse trabalho é realizar estudos sobre o protocolo DCCP (Datagram Congestion Control Protocol), fornecendo um repostiório de estudos que deve ser prático e conciso. Por fim, a atividade requer a realização de uma apresentação prática sobre o protocolo estudado. Nesse caso, a atividade prática será uma simulação de um servidor e um cliente utilizando o protocolo DCCP.
+O objetivo desse trabalho é realizar estudos sobre o protocolo DCCP (Datagram Congestion Control Protocol), fornecendo um repostiório de estudos que deve ser prático e robusto, oferecendo uma linha sequencial para aprender e endender o protocolo estudado. Por fim, a atividade requer a realização de uma demonstração prática sobre o protocolo estudado. Nesse caso, a atividade prática será uma simulação de um servidor e um cliente utilizando o protocolo DCCP.
 
 ## Roadmap
 
 A abordagem escolihda para o estudo do protocolo DCCP foi a de criar um roadmap. Um roadmap é uma ferramenta de planejamento estratégico que descreve as metas e objetivos de um projeto ou iniciativa, juntamente com os principais marcos, atividades e prazos necessários para alcançá-los.
 
-O roadmap do projeto é composto por X etapas:
+O roadmap do projeto é composto por 9 etapas:
 
 **1. [Introdução ao protocolo DCCP](Roadmap/1.%20Introdução.md)**
 
@@ -52,7 +52,7 @@ Nessa etapa, será explicado o código da aplicação prática.
 
 ## Referências e fontes
 
-A principal fonte utilizada neste trabalho foi a referência do protocolo no [IETF](https://datatracker.ietf.org/doc/rfc4340/). Porém, outros RFCs também foram estudados, como o [RFC 4336](https://datatracker.ietf.org/doc/rfc4336), o [RFC 4341](https://datatracker.ietf.org/doc/rfc4341) e o  [RFC 5595](https://www.rfc-editor.org/rfc/rfc5595#section-1.1). Outras fontes que também foram utilizadas, podem ser encontradas na seção de refrências do Estudo Bibliográfico.
+A principal fonte utilizada neste trabalho foi a referência do protocolo no [IETF](https://datatracker.ietf.org/doc/rfc4340/). Porém, outros RFCs também foram estudados, como o [RFC 4336](https://datatracker.ietf.org/doc/rfc4336), o [RFC 4341](https://datatracker.ietf.org/doc/rfc4341) e o [RFC 5595](https://www.rfc-editor.org/rfc/rfc5595#section-1.1). Outras fontes que também foram utilizadas, podem ser encontradas na seção de refrências do Estudo Bibliográfico.
 
 ---
 
