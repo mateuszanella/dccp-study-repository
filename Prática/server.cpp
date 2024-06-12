@@ -1,23 +1,9 @@
 #include "base.h"
 #include <thread>
 #include <vector>
-#include <mutex>
-#include <condition_variable>
-#include <functional>
 
 #define PORT 8080
 #define BUFFER_SIZE 1024
-
-std::mutex log_mutex;
-std::vector<std::thread> threads;
-std::mutex threads_mutex;
-std::condition_variable cv;
-bool done = false;
-
-void log(const std::string &message) {
-    std::lock_guard<std::mutex> lock(log_mutex);
-    std::cout << message << std::endl;
-}
 
 void handle_client(int sockfd, struct sockaddr_in cli_addr) {
     char buffer[BUFFER_SIZE];
@@ -26,8 +12,8 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr) {
     // Send ACK for connection establishment
     std::string ack = "ACK: connect";
     sendto(sockfd, ack.c_str(), ack.length(), 0, (struct sockaddr *)&cli_addr, cli_len);
-    log("Sent ACK to IP: " + std::string(inet_ntoa(cli_addr.sin_addr)) +
-        ", Port: " + std::to_string(ntohs(cli_addr.sin_port)));
+    std::cout << "Sent ACK to IP: " << inet_ntoa(cli_addr.sin_addr)
+              << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
 
     while (true) {
         int n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&cli_addr, &cli_len);
@@ -35,32 +21,17 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr) {
             break;
 
         buffer[n] = '\0'; // Null-terminate the received string
-        log("Received: " + std::string(buffer));
+        std::cout << "Received: " << buffer << std::endl;
 
         std::string ack = "ACK: " + std::string(buffer);
         sendto(sockfd, ack.c_str(), ack.length(), 0, (struct sockaddr *)&cli_addr, cli_len);
-        log("Sent ACK to IP: " + std::string(inet_ntoa(cli_addr.sin_addr)) +
-            ", Port: " + std::to_string(ntohs(cli_addr.sin_port)));
+        std::cout << "Sent ACK to IP: " << inet_ntoa(cli_addr.sin_addr)
+                  << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
 
         if (strcmp(buffer, "terminate") == 0) {
-            log("Termination signal received from IP: " + std::string(inet_ntoa(cli_addr.sin_addr)) +
-                ", Port: " + std::to_string(ntohs(cli_addr.sin_port)) + ". Closing connection.");
+            std::cout << "Termination signal received from IP: " << inet_ntoa(cli_addr.sin_addr)
+                      << ", Port: " << ntohs(cli_addr.sin_port) << ". Closing connection." << std::endl;
             break;
-        }
-    }
-}
-
-void cleanup_threads() {
-    while (!done) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        std::lock_guard<std::mutex> lock(threads_mutex);
-        for (auto it = threads.begin(); it != threads.end();) {
-            if (it->joinable()) {
-                it->join();
-                it = threads.erase(it);
-            } else {
-                ++it;
-            }
         }
     }
 }
@@ -70,6 +41,7 @@ int main() {
     char buffer[BUFFER_SIZE];
     struct sockaddr_in serv_addr, cli_addr;
     socklen_t cli_len = sizeof(cli_addr);
+    std::vector<std::thread> threads;
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
         error("Error opening socket");
@@ -84,25 +56,27 @@ int main() {
         error("Error on binding socket");
     }
 
-    log("Server is running on port " + std::to_string(PORT) + " and waiting for connections...");
-
-    std::thread cleaner_thread(cleanup_threads);
+    std::cout << "Server is running on port " << PORT << " and waiting for connections..." << std::endl;
 
     while (true) {
         int n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&cli_addr, &cli_len);
         if (n > 0) {
             buffer[n] = '\0';
-            log("Connection established with client at IP: " + std::string(inet_ntoa(cli_addr.sin_addr)) +
-                ", Port: " + std::to_string(ntohs(cli_addr.sin_port)));
+            std::cout << "Connection established with client at IP: "
+                      << inet_ntoa(cli_addr.sin_addr)
+                      << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
 
-            std::lock_guard<std::mutex> lock(threads_mutex);
-            threads.emplace_back(std::bind(handle_client, sockfd, cli_addr));
+            // Create a new thread to handle the client
+            threads.push_back(std::thread(handle_client, sockfd, cli_addr));
         }
     }
 
-    done = true;
-    cv.notify_all();
-    cleaner_thread.join();
+    // Join threads before exiting
+    for (auto &t : threads) {
+        if (t.joinable()) {
+            t.join();
+        }
+    }
 
     close(sockfd);
     return 0;
