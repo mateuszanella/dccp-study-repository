@@ -12,7 +12,7 @@ O objetivo desse trabalho é realizar estudos sobre o protocolo DCCP (Datagram C
 
 A abordagem escolhida para o estudo do protocolo DCCP foi a de criar um roadmap. Um roadmap é uma ferramenta de planejamento estratégico que descreve as metas e objetivos de um projeto ou iniciativa, juntamente com os principais marcos, atividades e prazos necessários para alcançá-los.
 
-O roadmap do projeto é composto por 9 etapas:
+O roadmap do projeto é composto por 8 etapas:
 
 **1. [Introdução ao protocolo DCCP](Roadmap/1.%20Introdução.md)**
 
@@ -45,10 +45,6 @@ Como o protocolo lida com a congestão.
 **8. [Implementação prática](Roadmap/8.%20Implementação.md)**
 
 Como executar a aplicação prática da atividade.
-
-**9. [Explicação do código](Roadmap/9.%20Código.md)**
-
-Explicação do código da aplicação prática.
 
 ---
 
