@@ -11,7 +11,7 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr) {
 
     // Send ACK for connection establishment
     std::string ack = "ACK: connect";
-    sendto(sockfd, ack.c_str(), ack.length(), 0, (struct sockaddr *)&cli_addr, cli_len);
+    send_message(sockfd, cli_addr, ack.c_str());
     std::cout << "Sent ACK to IP: " << inet_ntoa(cli_addr.sin_addr)
               << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
 
@@ -24,7 +24,7 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr) {
         std::cout << "Received: " << buffer << std::endl;
 
         std::string ack = "ACK: " + std::string(buffer);
-        sendto(sockfd, ack.c_str(), ack.length(), 0, (struct sockaddr *)&cli_addr, cli_len);
+        send_message(sockfd, cli_addr, ack.c_str());
         std::cout << "Sent ACK to IP: " << inet_ntoa(cli_addr.sin_addr)
                   << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
 
