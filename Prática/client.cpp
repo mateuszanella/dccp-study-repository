@@ -58,9 +58,12 @@ int main()
     struct sockaddr_in serv_addr;
     std::string server_ip;
 
-    std::cout << "Enter server IP address: ";
-    std::cin >> server_ip;
-    std::cin.ignore(); // Clear newline
+    std::cout << "Enter server IP address (leave empty for localhost): ";
+    std::getline(std::cin, server_ip);
+    if (server_ip.empty())
+    {
+        server_ip = "127.0.0.1";
+    }
 
     if ((sockfd = socket(AF_INET, SOCK_DGRAM, 0)) < 0)
     {
