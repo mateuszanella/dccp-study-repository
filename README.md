@@ -6,7 +6,13 @@ Integrantes: Felipe T. Malacarne e Mateus R. Zanella.
 
 ## Objetivo do projeto
 
-O objetivo desse trabalho é realizar estudos sobre o protocolo DCCP (Datagram Congestion Control Protocol), fornecendo um repostiório de estudos que deve ser prático e robusto, oferecendo uma linha sequencial para aprender e endender o assunto estudado. Por fim, a atividade requer a realização de uma demonstração prática sobre o protocolo analisado. Nesse caso, a prática escolhida será uma simulação de um servidor e um cliente utilizando o protocolo DCCP.
+O objetivo desse trabalho é realizar estudos sobre o protocolo DCCP (Datagram Congestion Control Protocol), fornecendo um repostiório de estudos que deve ser prático e robusto, oferecendo uma linha sequencial para aprender e endender o assunto estudado. Por fim, a atividade requer a realização de uma demonstração prática sobre o protocolo analisado. Nesse caso, a prática escolhida será uma dinâmica de um servidor e um cliente simulando o protocolo DCCP.
+
+> A ideia inicial na verdade, era realmente utilizar o próprio protocolo DCCP, porém, devido ao seu suporte limitado, optamos por apenas simular o protocolo em uma aplicação prática.
+
+<!-- Para ser sincero, talvez seria possível executar o protocolo em uma VM, porém não fui capaz.-->
+
+A ideia de criar um repositório se deu ao fato de que o DCCP não possui muita documentação além de suas referências no [IETF](https://datatracker.ietf.org/doc/rfc4340/), o que dificulta o aprendizado do protocolo devido à densidade e à complexidade do conteúdo. Desse modo, resolvemos criar um ambiente de estudos que seja mais acessível e leve para o aprendizado.
 
 ## Roadmap
 
