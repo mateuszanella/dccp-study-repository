@@ -12,9 +12,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <unistd.h>
+#include <chrono>
+#include <thread>
 
 #define PORT 8080
-#define BUFFER_SIZE 1024
+#define BUFFER_SIZE 4096
 #define SERVER_IP "127.0.0.1"
 
 #define DCCP_REQ "[DCCP Request]"

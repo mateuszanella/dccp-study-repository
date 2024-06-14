@@ -1,10 +1,8 @@
 #include "base.h"
-#include <thread>
 #include <vector>
 #include <future>
-#include <chrono>
 
-void establish_connection(std::vector<std::thread> &threads, int sockfd, struct sockaddr_in cli_addr, char *buffer);
+void establish_connection(int sockfd, struct sockaddr_in cli_addr);
 void handle_client(int sockfd, struct sockaddr_in cli_addr);
 
 /*
@@ -52,17 +50,26 @@ int main()
     while (true)
     {
         int n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&cli_addr, &cli_len);
-        if (n > 0 && strcmp(buffer, DCCP_REQ) == 0)
+        if (n > 0)
         {
             buffer[n] = '\0';
-            std::cout << "Received: " << buffer << " from IP: "
-                      << inet_ntoa(cli_addr.sin_addr)
-                      << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
 
-            /*
-             * Start a new thread to handle the connection with the client.
-             */
-            threads.push_back(std::thread(establish_connection, std::ref(threads), sockfd, cli_addr, buffer));
+            if (strcmp(buffer, DCCP_REQ) == 0)
+            {
+                std::cout << "Received: " << buffer << " from IP: "
+                          << inet_ntoa(cli_addr.sin_addr)
+                          << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
+
+                /*
+                 * Start a new thread to handle the connection with the client.
+                 */
+                threads.push_back(std::thread(establish_connection, sockfd, cli_addr));
+            }
+        }
+        else
+        {
+            std::cout << "No data received. Waiting for new packets...\n";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
         }
     }
 
@@ -83,8 +90,11 @@ int main()
     return 0;
 }
 
-void establish_connection(std::vector<std::thread> &threads, int sockfd, struct sockaddr_in cli_addr, char *buffer)
+void establish_connection(int sockfd, struct sockaddr_in cli_addr)
 {
+    socklen_t cli_len = sizeof(cli_addr);
+    char buffer[BUFFER_SIZE];
+    bool connection_established = false;
     /*
      * This functions runs with a timeout, and is terminated if no ACK is received.
      *
@@ -97,19 +107,29 @@ void establish_connection(std::vector<std::thread> &threads, int sockfd, struct 
         std::cout << "Sent: " << msg << " to IP: " << inet_ntoa(cli_addr.sin_addr)
                   << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
 
-        socklen_t cli_len = sizeof(cli_addr);
-
         /*
          * Awaits for the ACK.
          */
         int rec = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&cli_addr, &cli_len);
-
-        if (rec > 0 && strcmp(buffer, DCCP_ACK) == 0)
+        if (rec > 0)
         {
-            std::cout << "Connection established with IP: " << inet_ntoa(cli_addr.sin_addr)
+            buffer[rec] = '\0';
+        }
+        else
+        {
+            std::cout << "WARNING received trash" << std::endl;
+            return;
+        }
+
+        if (strcmp(buffer, DCCP_ACK) == 0)
+        {
+            std::cout << "Received " << buffer << std::endl
+                      << "Connection established with IP: "
+                      << inet_ntoa(cli_addr.sin_addr)
                       << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
 
-            threads.push_back(std::thread(handle_client, sockfd, cli_addr));
+            connection_established = true;
+            handle_client(sockfd, cli_addr);
         }
     };
 
@@ -117,15 +137,15 @@ void establish_connection(std::vector<std::thread> &threads, int sockfd, struct 
      * Timeout for the connection attempt.
      */
     std::future<void> future = std::async(std::launch::async, connection_task);
-    if (future.wait_for(std::chrono::seconds(5)) == std::future_status::timeout)
+    if ((future.wait_for(std::chrono::seconds(10)) == std::future_status::timeout) && !connection_established)
     {
         std::cout << "Connection attempt timed out." << std::endl;
         return;
     }
-    // else
-    // {
-    //     future.get();
-    // }
+    else
+    {
+        future.get();
+    }
 }
 
 void handle_client(int sockfd, struct sockaddr_in cli_addr)
@@ -139,26 +159,57 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr)
          * After the connection is established, the server will enter a listening stage.
          */
         int n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&cli_addr, &cli_len);
-        if (n <= 0)
-            break;
-
-        buffer[n] = '\0';
-        std::cout << "Received: " << buffer << std::endl;
-
-        /*
-         * If the client sends a [DCCP Reset], the server will close the connection.
-         * No ACK is sent back to the client, since the connection is being forcefully closed.
-         */
-        if (strcmp(buffer, DCCP_RESET) == 0)
+        if (n > 0)
         {
-            std::cout << "[DCCP Reset] packet received from IP: " << inet_ntoa(cli_addr.sin_addr)
-                      << ", Port: " << ntohs(cli_addr.sin_port) << ". Closing connection." << std::endl;
-            break;
-        }
+            buffer[n] = '\0';
 
-        std::string ack = "ACK: " + std::string(buffer);
-        send_message(sockfd, cli_addr, ack.c_str());
-        std::cout << "Sent: " << ack << " to IP: " << inet_ntoa(cli_addr.sin_addr)
-                  << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
+            /*
+             * If the client sends a [DCCP Reset], the server will close the connection.
+             * No ACK is sent back to the client, since the connection is being forcefully closed.
+             */
+            if (strcmp(buffer, DCCP_RESET) == 0)
+            {
+                std::cout << "[DCCP Reset] packet received from IP: "
+                          << inet_ntoa(cli_addr.sin_addr)
+                          << ", Port: " << ntohs(cli_addr.sin_port)
+                          << ". Closing connection." << std::endl;
+                break;
+            }
+
+            /*
+             * If the client sends a [DCCP CloseReq], the server will send a
+             * [DCCP Close] back to the client and close the connection.
+             */
+            if (strcmp(buffer, DCCP_CLOSE_REQ) == 0)
+            {
+                std::cout << "[DCCP CloseReq] packet received from IP: "
+                          << inet_ntoa(cli_addr.sin_addr)
+                          << ", Port: " << ntohs(cli_addr.sin_port)
+                          << ". Closing connection." << std::endl;
+
+                std::string close = DCCP_CLOSE;
+                send_message(sockfd, cli_addr, close.c_str());
+                std::cout << "Sent: " << close << " to IP: " << inet_ntoa(cli_addr.sin_addr)
+                          << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
+                break;
+            }
+
+            /*
+             * If the client sends a [DCCP Data], the server will send a [DCCP Ack] back to the client.
+             *
+             * Both server and clients may wish to send data along with the acknowledgment.
+             * For that, the server will send a [DCCP DataAck] back to the client.
+             * For more info, check the 4. Packets roadmap section.
+             */
+            std::string ack = DCCP_ACK;
+            send_message(sockfd, cli_addr, ack.c_str());
+            std::cout << "Sent: " << ack << " to IP: " << inet_ntoa(cli_addr.sin_addr)
+                      << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
+        }
+        else
+        {
+            std::cout << "No data received while listening. Waiting for new packets...\n";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
     }
 }
