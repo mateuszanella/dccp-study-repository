@@ -6,7 +6,7 @@
 #include "base.h"
 
 void establish_connection(int sockfd, struct sockaddr_in &serv_addr);
-void handle_server_response(int sockfd, struct sockaddr_in &serv_addr);
+void interact_with_server(int sockfd, struct sockaddr_in &serv_addr);
 
 int main()
 {
@@ -63,11 +63,6 @@ void establish_connection(int sockfd, struct sockaddr_in &serv_addr)
     send_message(sockfd, serv_addr, conn_msg);
     std::cout << "Sent: " << conn_msg << std::endl;
 
-    // struct timeval tv;
-    // tv.tv_sec = 5; // 5 seconds timeout
-    // tv.tv_usec = 0;
-    // setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&tv, sizeof tv);
-
     /*
      * The client waits for a [DCCP Response] from the server.
      */
@@ -91,13 +86,13 @@ void establish_connection(int sockfd, struct sockaddr_in &serv_addr)
     {
         std::cout << "Received: " << buffer << std::endl;
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
         const char *ack = DCCP_ACK;
         send_message(sockfd, serv_addr, ack);
         std::cout << "Sent: " << ack << std::endl;
 
-        handle_server_response(sockfd, serv_addr);
+        interact_with_server(sockfd, serv_addr);
     }
 
     /*
@@ -113,7 +108,7 @@ void establish_connection(int sockfd, struct sockaddr_in &serv_addr)
     }
 }
 
-void handle_server_response(int sockfd, struct sockaddr_in &serv_addr)
+void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
 {
     char buffer[BUFFER_SIZE];
     socklen_t serv_len = sizeof(serv_addr);
@@ -152,6 +147,8 @@ void handle_server_response(int sockfd, struct sockaddr_in &serv_addr)
             std::getline(std::cin, input);
             message += " " + input;
 
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
             send_message(sockfd, serv_addr, input.c_str());
             std::cout << "\nSent: " << input << std::endl;
         }
@@ -160,13 +157,13 @@ void handle_server_response(int sockfd, struct sockaddr_in &serv_addr)
             const char *close_req = DCCP_CLOSE_REQ;
             send_message(sockfd, serv_addr, close_req);
             std::cout << "\nSent: " << close_req << std::endl;
-            // break;
         }
         else if (packet_type == "3")
         {
             const char *reset = DCCP_RESET;
             send_message(sockfd, serv_addr, reset);
             std::cout << "\nSent: " << reset << std::endl;
+            std::cout << "Terminating connection.\n\n";
             break;
         }
         else
@@ -176,11 +173,35 @@ void handle_server_response(int sockfd, struct sockaddr_in &serv_addr)
         }
 
         // Await server response
-        int n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, nullptr, nullptr);
-        if (n > 0)
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+        int res = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, nullptr, nullptr);
+        if (res > 0)
         {
-            buffer[n] = '\0';
+            buffer[res] = '\0';
             std::cout << "Received: " << buffer << std::endl;
+        }
+
+        /*
+         * If the server sends a [DCCP Reset], the client will close the connection.
+         * No ACK is sent back to the client, since the connection is being forcefully closed.
+         */
+        if (strcmp(buffer, DCCP_RESET) == 0)
+        {
+            std::cout << "[DCCP Reset] packet received" << std::endl
+                      << ". Closing connection." << std::endl;
+            break;
+        }
+
+        /*
+         * If the server sends a [DCCP CloseReq], the client will send a
+         * [DCCP Close] back to the server and close the connection.
+         */
+        if (strcmp(buffer, DCCP_CLOSE) == 0)
+        {
+            std::cout << "[DCCP Close] packet received" << std::endl
+                      << ". Closing connection." << std::endl;
+            break;
         }
 
         /*
@@ -190,6 +211,6 @@ void handle_server_response(int sockfd, struct sockaddr_in &serv_addr)
         message.clear();
         buffer[0] = '\0';
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
     }
 }

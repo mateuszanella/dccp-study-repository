@@ -102,10 +102,14 @@ void establish_connection(int sockfd, struct sockaddr_in cli_addr)
      */
     auto connection_task = [&]()
     {
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+
         std::string msg = DCCP_RESP;
         send_message(sockfd, cli_addr, msg.c_str());
         std::cout << "Sent: " << msg << " to IP: " << inet_ntoa(cli_addr.sin_addr)
                   << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
         /*
          * Awaits for the ACK.
@@ -137,7 +141,7 @@ void establish_connection(int sockfd, struct sockaddr_in cli_addr)
      * Timeout for the connection attempt.
      */
     std::future<void> future = std::async(std::launch::async, connection_task);
-    if ((future.wait_for(std::chrono::seconds(10)) == std::future_status::timeout) && !connection_established)
+    if ((future.wait_for(std::chrono::seconds(30)) == std::future_status::timeout) && !connection_established)
     {
         std::cout << "Connection attempt timed out." << std::endl;
         return;
@@ -163,6 +167,11 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr)
         {
             buffer[n] = '\0';
 
+            if (strcmp(buffer, DCCP_ACK) == 0)
+            {
+                continue;
+            }
+
             /*
              * If the client sends a [DCCP Reset], the server will close the connection.
              * No ACK is sent back to the client, since the connection is being forcefully closed.
@@ -173,7 +182,7 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr)
                           << inet_ntoa(cli_addr.sin_addr)
                           << ", Port: " << ntohs(cli_addr.sin_port)
                           << ". Closing connection." << std::endl;
-                break;
+                return;
             }
 
             /*
@@ -191,7 +200,7 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr)
                 send_message(sockfd, cli_addr, close.c_str());
                 std::cout << "Sent: " << close << " to IP: " << inet_ntoa(cli_addr.sin_addr)
                           << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
-                break;
+                return;
             }
 
             /*
