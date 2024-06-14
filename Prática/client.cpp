@@ -172,36 +172,60 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
             continue;
         }
 
-        // Await server response
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
+        /*
+         * After sending a message, the client waits for a response from the server.
+         */
         int res = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, nullptr, nullptr);
         if (res > 0)
         {
             buffer[res] = '\0';
             std::cout << "Received: " << buffer << std::endl;
-        }
 
-        /*
-         * If the server sends a [DCCP Reset], the client will close the connection.
-         * No ACK is sent back to the client, since the connection is being forcefully closed.
-         */
-        if (strcmp(buffer, DCCP_RESET) == 0)
-        {
-            std::cout << "[DCCP Reset] packet received" << std::endl
-                      << ". Closing connection." << std::endl;
-            break;
-        }
+            if (strcmp(buffer, DCCP_ACK) == 0)
+            {
+                continue;
+            }
 
-        /*
-         * If the server sends a [DCCP CloseReq], the client will send a
-         * [DCCP Close] back to the server and close the connection.
-         */
-        if (strcmp(buffer, DCCP_CLOSE) == 0)
-        {
-            std::cout << "[DCCP Close] packet received" << std::endl
-                      << ". Closing connection." << std::endl;
-            break;
+            /*
+             * In the case that the server does not receive a [DCCP Ack] packet, but the client
+             * has entered a sending loop, the server will retransmit a [DCCP Response] packet to the client,
+             * in the hopes of reestablishing the connection.
+             *
+             * In this case, the client will send an ACK back to the server and continue the interaction.
+             * A policy to retransmit the previous lost [DCCP Data] packet could be implemented.
+             */
+            if (strcmp(buffer, DCCP_RESP) == 0)
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+                const char *ack = DCCP_ACK;
+                send_message(sockfd, serv_addr, ack);
+                std::cout << "Sent: " << ack << std::endl;
+
+                continue;
+            }
+
+            /*
+             * If the server sends a [DCCP Reset], the client will close the connection.
+             * No ACK is sent back to the client, since the connection is being forcefully closed.
+             */
+            if (strcmp(buffer, DCCP_RESET) == 0)
+            {
+                std::cout << "[DCCP Reset] packet received" << std::endl
+                          << ". Closing connection." << std::endl;
+                break;
+            }
+
+            /*
+             * If the server sends a [DCCP CloseReq], the client will send a
+             * [DCCP Close] back to the server and close the connection.
+             */
+            if (strcmp(buffer, DCCP_CLOSE) == 0)
+            {
+                std::cout << "[DCCP Close] packet received" << std::endl
+                          << ". Closing connection." << std::endl;
+                break;
+            }
         }
 
         /*
@@ -211,6 +235,6 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
         message.clear();
         buffer[0] = '\0';
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
 }
