@@ -91,7 +91,7 @@ void establish_connection(int sockfd, struct sockaddr_in cli_addr)
 
     struct timeval timeout;
     timeout.tv_sec = 0;
-    timeout.tv_usec = 50000;
+    timeout.tv_usec = 150000;
 
     int result = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
     if (result < 0)
