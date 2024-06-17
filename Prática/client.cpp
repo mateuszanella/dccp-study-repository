@@ -54,6 +54,19 @@ void establish_connection(int sockfd, struct sockaddr_in &serv_addr)
 {
     char buffer[BUFFER_SIZE];
     std::string packet_type, message;
+    int conn_attempts = 0;
+    int max_attempts = 5;
+    bool connected = false;
+
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 100000;
+
+    if (setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (char *)&timeout, sizeof(timeout)) < 0)
+    {
+        error("ERROR setting timeout for socket");
+        return;
+    }
 
     /*
      * Starts the three way handshake with the server.
@@ -66,31 +79,48 @@ void establish_connection(int sockfd, struct sockaddr_in &serv_addr)
     /*
      * The client waits for a [DCCP Response] from the server.
      */
-    int n = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, nullptr, nullptr);
+    int res = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, nullptr, nullptr);
+    if (res > 0)
+    {
+        buffer[res] = '\0';
+    }
+    else if (res < 0)
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        {
+            error("ERROR no ACK received within set timeframe");
+        }
+        else
+        {
+            error("ERROR receiving data from server");
+            return;
+        }
+    }
 
     /*
      * If the server sends a [DCCP Response] back,
      * the client sends an ACK and starts the data exchange.
      */
-    if (n > 0)
-    {
-        buffer[n] = '\0';
-    }
-    else
-    {
-        std::cout << "Connection attempt timed out. Closing connection.\n\n";
-        return;
-    }
-
     if (strcmp(buffer, DCCP_RESP) == 0)
     {
-        std::cout << "Received: " << buffer << std::endl;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 150000;
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::cout << "Received: " << buffer << std::endl;
 
         const char *ack = DCCP_ACK;
         send_message(sockfd, serv_addr, ack);
         std::cout << "Sent: " << ack << std::endl;
+
+        /*
+         * Here, the client waits for the case that the server does not receive the ACK.
+         * The server will retransmit the [DCCP Response] packet to the client, and the client
+         * will retransmit the ACK back to the server.
+         */
+
+        auto [sucess, received_msg] = await_response(sockfd, serv_addr, ack, 5, [&](){
+            send_message(sockfd, serv_addr, ack);
+        });
 
         interact_with_server(sockfd, serv_addr);
     }
@@ -227,6 +257,20 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
                 break;
             }
         }
+        else if (res < 0)
+        {
+            if (errno == EAGAIN || errno == EWOULDBLOCK)
+            {
+                // Add congestion mechanism here
+                std::cout << "No ACK received within set timeframe" << std::endl;
+                continue;
+            }
+            else
+            {
+                error("ERROR receiving data from server");
+                break;
+            }
+        }
 
         /*
          * Reset variables for next iteration.
@@ -235,6 +279,6 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
         message.clear();
         buffer[0] = '\0';
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        // std::this_thread::sleep_for(std::chrono::milliseconds(250));
     }
 }

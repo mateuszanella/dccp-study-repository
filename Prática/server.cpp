@@ -93,62 +93,52 @@ int main()
 void establish_connection(int sockfd, struct sockaddr_in cli_addr)
 {
     socklen_t cli_len = sizeof(cli_addr);
-    char buffer[BUFFER_SIZE];
-    bool connection_established = false;
+
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 50000;
+
     /*
-     * This functions runs with a timeout, and is terminated if no ACK is received.
+     * This functions runs with a set amount of max tries, and is terminated if no ACK is received.
      *
      * The server begins by sending a [DCCP Response] to the client and wait for an ACK.
      */
-    auto connection_task = [&]()
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(250));
-
-        std::string msg = DCCP_RESP;
-        send_message(sockfd, cli_addr, msg.c_str());
-        std::cout << "Sent: " << msg << " to IP: " << inet_ntoa(cli_addr.sin_addr)
-                  << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        /*
-         * Awaits for the ACK.
-         */
-        int rec = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, (struct sockaddr *)&cli_addr, &cli_len);
-        if (rec > 0)
-        {
-            buffer[rec] = '\0';
-        }
-        else
-        {
-            std::cout << "WARNING received trash" << std::endl;
-            return;
-        }
-
-        if (strcmp(buffer, DCCP_ACK) == 0)
-        {
-            std::cout << "Received " << buffer << std::endl
-                      << "Connection established with IP: "
-                      << inet_ntoa(cli_addr.sin_addr)
-                      << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
-
-            connection_established = true;
-            handle_client(sockfd, cli_addr);
-        }
-    };
+    std::string response_msg = DCCP_RESP;
+    send_message(sockfd, cli_addr, response_msg.c_str());
+    std::cout << "Sent: " << response_msg << " to IP: " << inet_ntoa(cli_addr.sin_addr)
+              << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
 
     /*
-     * Timeout for the connection attempt.
+     * Awaits for the ACK.
      */
-    std::future<void> future = std::async(std::launch::async, connection_task);
-    if ((future.wait_for(std::chrono::seconds(30)) == std::future_status::timeout) && !connection_established)
+    auto [success, received_msg] = await_response(sockfd, cli_addr, response_msg.c_str(), 5, [&]()
+                                                  {
+        send_message(sockfd, cli_addr, response_msg.c_str());
+        std::cout << "Resending: " << response_msg << " to IP: "
+                << inet_ntoa(cli_addr.sin_addr)
+                << ", Port: " << ntohs(cli_addr.sin_port) << std::endl; });
+
+    if (!success)
     {
-        std::cout << "Connection attempt timed out." << std::endl;
+        std::cout << "Failed to establish connection after " << 5 << " attempts." << std::endl;
         return;
+    }
+
+    if (received_msg == DCCP_ACK)
+    {
+        std::cout << "Received " << received_msg << std::endl
+                  << "Connection established with IP: "
+                  << inet_ntoa(cli_addr.sin_addr)
+                  << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
+
+        handle_client(sockfd, cli_addr);
     }
     else
     {
-        future.get();
+        std::cout << "No ACK received. Closing connection with IP: "
+                  << inet_ntoa(cli_addr.sin_addr)
+                  << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
+        return;
     }
 }
 
