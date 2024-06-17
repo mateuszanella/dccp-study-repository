@@ -66,11 +66,6 @@ int main()
                 threads.push_back(std::thread(establish_connection, sockfd, cli_addr));
             }
         }
-        else
-        {
-            std::cout << "No data received. Waiting for new packets...\n";
-            std::this_thread::sleep_for(std::chrono::seconds(1));
-        }
     }
 
     /*
@@ -97,6 +92,12 @@ void establish_connection(int sockfd, struct sockaddr_in cli_addr)
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = 50000;
+
+    int result = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
+    if (result < 0)
+    {
+        error("ERROR setting timeout for socket");
+    }
 
     /*
      * This functions runs with a set amount of max tries, and is terminated if no ACK is received.
@@ -149,6 +150,10 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr)
 
     while (true)
     {
+        struct timeval timeout;
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 100000;
+
         /*
          * After the connection is established, the server will enter a listening stage.
          */
@@ -207,8 +212,7 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr)
         }
         else
         {
-            std::cout << "No data received while listening. Waiting for new packets...\n";
-            std::this_thread::sleep_for(std::chrono::seconds(1));
+            // std::cout << "No data received on cycle. Waiting for new packets...\n";
         }
     }
 }
