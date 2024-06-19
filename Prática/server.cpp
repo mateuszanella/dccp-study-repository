@@ -112,7 +112,7 @@ void establish_connection(int sockfd, struct sockaddr_in cli_addr)
     /*
      * Awaits for the ACK.
      */
-    auto [success, received_msg] = await_response(sockfd, cli_addr, response_msg.c_str(), 5, [&]()
+    auto [success, received_msg] = await_response(sockfd, cli_addr, response_msg.c_str(), 10, [&]()
                                                   {
         send_message(sockfd, cli_addr, response_msg.c_str());
         std::cout << "Resending: " << response_msg << " to IP: "
@@ -121,7 +121,7 @@ void establish_connection(int sockfd, struct sockaddr_in cli_addr)
 
     if (!success)
     {
-        std::cout << "Failed to establish connection after " << 5 << " attempts." << std::endl;
+        std::cout << "Failed to establish connection after " << 10 << " attempts." << std::endl;
         return;
     }
 
@@ -153,6 +153,12 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr)
         struct timeval timeout;
         timeout.tv_sec = 0;
         timeout.tv_usec = 100000;
+
+        int result = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
+        if (result < 0)
+        {
+            error("ERROR setting timeout for socket");
+        }
 
         /*
          * After the connection is established, the server will enter a listening stage.
@@ -209,10 +215,6 @@ void handle_client(int sockfd, struct sockaddr_in cli_addr)
             send_message(sockfd, cli_addr, ack.c_str());
             std::cout << "Sent: " << ack << " to IP: " << inet_ntoa(cli_addr.sin_addr)
                       << ", Port: " << ntohs(cli_addr.sin_port) << std::endl;
-        }
-        else
-        {
-            // std::cout << "No data received on cycle. Waiting for new packets...\n";
         }
     }
 }

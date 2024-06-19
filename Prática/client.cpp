@@ -7,6 +7,7 @@
 
 void establish_connection(int sockfd, struct sockaddr_in &serv_addr);
 void interact_with_server(int sockfd, struct sockaddr_in &serv_addr);
+void retransmit_message(int sockfd, struct sockaddr_in &serv_addr, std::string &message, char *buffer, int &cwnd, int &ssthresh, int &acks_received);
 
 int main()
 {
@@ -106,6 +107,12 @@ void establish_connection(int sockfd, struct sockaddr_in &serv_addr)
         timeout.tv_sec = 0;
         timeout.tv_usec = 150000;
 
+        int result = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
+        if (result < 0)
+        {
+            error("ERROR setting timeout for socket");
+        }
+
         std::cout << "Received: " << buffer << std::endl;
 
         const char *ack = DCCP_ACK;
@@ -118,9 +125,8 @@ void establish_connection(int sockfd, struct sockaddr_in &serv_addr)
          * will retransmit the ACK back to the server.
          */
 
-        auto [sucess, received_msg] = await_response(sockfd, serv_addr, ack, 5, [&](){
-            send_message(sockfd, serv_addr, ack);
-        });
+        auto [sucess, received_msg] = await_response(sockfd, serv_addr, ack, 10, [&]()
+                                                     { send_message(sockfd, serv_addr, ack); });
 
         interact_with_server(sockfd, serv_addr);
     }
@@ -142,7 +148,21 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
 {
     char buffer[BUFFER_SIZE];
     socklen_t serv_len = sizeof(serv_addr);
-    std::string packet_type, message;
+    std::string packet_type;
+
+    int acks_received = 0; // Sucessful ACKs received from the server.
+    int cwnd = 5;          // Congestion Window Size. Defines how many messages can be sent without receiving an ACK.
+    int ssthresh = 10;     // Defines the threshold for the slow start algorithm.
+
+    struct timeval timeout;
+    timeout.tv_sec = 0;
+    timeout.tv_usec = 5000;
+
+    int result = setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (const char *)&timeout, sizeof(timeout));
+    if (result < 0)
+    {
+        error("ERROR setting timeout for socket");
+    }
 
     /*
      * The client can now start sending messages to the server.
@@ -169,6 +189,8 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
         std::cout << "Enter your choice: ";
         std::getline(std::cin, packet_type);
 
+        std::string message = DCCP_DATA;
+
         if (packet_type == "1")
         {
             std::string input;
@@ -177,10 +199,8 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
             std::getline(std::cin, input);
             message += " " + input;
 
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-            send_message(sockfd, serv_addr, input.c_str());
-            std::cout << "\nSent: " << input << std::endl;
+            send_message(sockfd, serv_addr, message.c_str());
+            std::cout << "\nSent: " << message << std::endl;
         }
         else if (packet_type == "2")
         {
@@ -211,8 +231,22 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
             buffer[res] = '\0';
             std::cout << "Received: " << buffer << std::endl;
 
+            acks_received++;
+
             if (strcmp(buffer, DCCP_ACK) == 0)
             {
+                if (cwnd < ssthresh)
+                {
+                    cwnd *= 2;
+                }
+                else
+                {
+                    if (acks_received >= cwnd)
+                    {
+                        cwnd++;
+                        acks_received = 0;
+                    }
+                }
                 continue;
             }
 
@@ -226,8 +260,6 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
              */
             if (strcmp(buffer, DCCP_RESP) == 0)
             {
-                std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
                 const char *ack = DCCP_ACK;
                 send_message(sockfd, serv_addr, ack);
                 std::cout << "Sent: " << ack << std::endl;
@@ -261,9 +293,8 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
         {
             if (errno == EAGAIN || errno == EWOULDBLOCK)
             {
-                // Add congestion mechanism here
-                std::cout << "No ACK received within set timeframe" << std::endl;
-                continue;
+                std::cout << "No response received from server within specified timewindow." << std::endl;
+                retransmit_message(sockfd, serv_addr, message, buffer, cwnd, ssthresh, acks_received);
             }
             else
             {
@@ -271,14 +302,120 @@ void interact_with_server(int sockfd, struct sockaddr_in &serv_addr)
                 break;
             }
         }
+    }
+}
 
-        /*
-         * Reset variables for next iteration.
-         */
-        packet_type.clear();
-        message.clear();
-        buffer[0] = '\0';
+/*
+ * This function emulates a simplified version of the CCID 2 congestion control algorithm using a mix of slow start
+ * and congestion avoidance phases, typical in TCP-like protocols, but adapted here for demonstration purposes.
+ * This function attempts to retransmit a message multiple times, corresponding to the current size of the
+ * congestion window (cwnd), handling ACKs to adjust cwnd dynamically.
+ *
+ * The congestion control behaves as follows:
+ * - Slow Start: On receiving an ACK, the cwnd is doubled until it reaches the slow start threshold (ssthresh),
+ *   promoting rapid throughput increase. This phase is designed to quickly find the available bandwidth capacity.
+ * - Congestion Avoidance: Once ssthresh is reached, cwnd is increased more conservatively to avoid network congestion.
+ *   Specifically, cwnd is increased by one Maximum Segment Size (MSS) for each full window of packets acknowledged,
+ *   simulating a careful and measured increase to maintain network stability.
+ *
+ * If an ACK is not received (indicated by a timeout), the function decreases cwnd by half and also adjusts
+ * ssthresh to half of the current cwnd, reflecting a typical response to perceived network congestion.
+ *
+ */
+void retransmit_message(int sockfd, struct sockaddr_in &serv_addr, std::string &message, char *buffer, int &cwnd, int &ssthresh, int &acks_received)
+{
+    for (int i = 0; i < cwnd; ++i)
+    {
+        std::cout << "Attempting to retransmit message. Attempt: " << i + 1 << " of " << cwnd << std::endl;
+        send_message(sockfd, serv_addr, message.c_str());
+        std::cout << "Sent: " << message << std::endl;
 
-        // std::this_thread::sleep_for(std::chrono::milliseconds(250));
+        int res = recvfrom(sockfd, buffer, BUFFER_SIZE, 0, nullptr, nullptr);
+        int recv_errno = errno;
+        if (res > 0)
+        {
+            buffer[res] = '\0';
+            std::cout << "Received: " << buffer << std::endl;
+
+            if (strcmp(buffer, DCCP_ACK) == 0)
+            {
+                /*
+                 * Manage the congestion window (cwnd) based on ACK reception using the TCP-like congestion control phases:
+                 * Slow Start and Congestion Avoidance.
+                 */
+
+                /*
+                 * Slow Start Phase:
+                 * In this phase, the congestion window doubles for each ACK received, promoting rapid increase in throughput.
+                 * This exponential growth continues until the cwnd reaches the slow start threshold (ssthresh).
+                 */
+                if (cwnd < ssthresh)
+                {
+                    cwnd *= 2; // Exponential growth: double the cwnd for each ACK until reaching the ssthresh.
+                    // Note: This assumes the network can support such a rapid increase without leading to congestion.
+                }
+                /*
+                 * Congestion Avoidance Phase:
+                 * Once the slow start threshold is reached, we switch to congestion avoidance,
+                 * where the cwnd is increased more gradually to avoid causing network congestion.
+                 * This phase aims to optimize network throughput while maintaining network stability.
+                 */
+                else
+                {
+                    acks_received++;
+
+                    /*
+                     * Increase cwnd by 1 MSS only after a full window of packets has been acknowledged,
+                     * simulating approximately one increase per round-trip time (RTT).
+                     *
+                     * MSS: Maximum Segment Size (maximum amount of data that can be sent in a single segment).
+                     */
+                    if (acks_received >= cwnd)
+                    {
+                        cwnd++;            // Additive increase: add one MSS to the cwnd.
+                        acks_received = 0; // Reset the count of ACKs after increasing the cwnd.
+                    }
+                }
+
+                if (strcmp(buffer, DCCP_RESET) == 0)
+                {
+                    std::cout << "[DCCP Reset] packet received" << std::endl
+                              << ". Closing connection." << std::endl;
+                    exit(0);
+                }
+
+                if (strcmp(buffer, DCCP_CLOSE) == 0)
+                {
+                    std::cout << "[DCCP Close] packet received" << std::endl
+                              << ". Closing connection." << std::endl;
+                    exit(0);
+                }
+                return;
+            }
+            else
+            {
+                if (recv_errno == EAGAIN || recv_errno == EWOULDBLOCK)
+                {
+                    std::cout << "Timeout reached, no response received." << std::endl;
+
+                    /*
+                     * If the client reaches the maximum number of retransmissions without receiving an ACK,
+                     * it will decrease the congestion window and the slow start threshold.
+                     */
+                    if (i == cwnd - 1)
+                    {
+                        std::cout << "Decreasing congestion window due to repeated timeouts." << std::endl;
+                        ssthresh = std::max(2, cwnd / 2); // Set the slow start threshold to half the current congestion windowß
+                        cwnd = std::max(1, cwnd / 2);     // Halve the congestion window
+                        return;
+                    }
+                }
+                else
+                {
+                    error("ERROR receiving data from server");
+                    return;
+                }
+            }
+        }
     }
 }
