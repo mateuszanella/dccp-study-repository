@@ -51,19 +51,7 @@ jobs:
           ${{ matrix.compiler }} -o client-${{ matrix.suffix }} client.cpp -std=c++17 -pthread
         working-directory: Prática
 
-      # - name: Upload Server Artifact
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: server-${{ matrix.os }}
-      #     path: Prática/server-${{ matrix.suffix }}*
-      #
-      # - name: Upload Client Artifact
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: client-${{ matrix.os }}
-      #     path: Prática/client-${{ matrix.suffix }}*
-
       - name: Commit build files
         uses: stefanzweifel/git-auto-commit-action@v5
         with:
-          commit_message: "Fixes coding style"
+          commit_message: "Build ${{ matrix.os }}"
