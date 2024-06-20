@@ -14,14 +14,14 @@ jobs:
       contents: write
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest] # , windows-latest
         include:
           - os: ubuntu-latest
             compiler: g++
             suffix: linux
-          - os: windows-latest
-            compiler: g++.exe
-            suffix: windows
+          # - os: windows-latest
+          #   compiler: g++.exe
+          #   suffix: windows
 
     steps:
       - name: Checkout code
