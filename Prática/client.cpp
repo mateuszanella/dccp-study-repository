@@ -344,6 +344,8 @@ void retransmit_message(int sockfd, struct sockaddr_in &serv_addr, std::string &
                  * Slow Start and Congestion Avoidance.
                  */
 
+                acks_received++;
+
                 /*
                  * Slow Start Phase:
                  * In this phase, the congestion window doubles for each ACK received, promoting rapid increase in throughput.
@@ -362,8 +364,6 @@ void retransmit_message(int sockfd, struct sockaddr_in &serv_addr, std::string &
                  */
                 else
                 {
-                    acks_received++;
-
                     /*
                      * Increase cwnd by 1 MSS only after a full window of packets has been acknowledged,
                      * simulating approximately one increase per round-trip time (RTT).
