@@ -1,0 +1,45 @@
+name: C++ CI Build
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            gcc: g++ 
+          - os: windows-latest
+            gcc: g++.exe
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install dependencies (Linux)
+      if: matrix.os == 'ubuntu-latest'
+      run: |
+        sudo apt update
+        sudo apt install g++-multilib libpthread-stubs0-dev
+
+    - name: Install dependencies (Windows)
+      if: matrix.os == 'windows-latest'
+      run: |
+        choco install mingw
+
+    - name: Build project
+      run: |
+        ${{ matrix.gcc }} -o server server.cpp -std=c++17 -pthread
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: server-${{ matrix.os }}
+        path: ./server*
