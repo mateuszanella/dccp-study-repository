@@ -89,7 +89,7 @@ void establish_connection(int sockfd, struct sockaddr_in &serv_addr)
     {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
         {
-            error("ERROR no ACK received within set timeframe");
+            error("ERROR no DCCP Response received within set timeframe");
         }
         else
         {
