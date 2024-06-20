@@ -134,7 +134,7 @@ void establish_connection(int sockfd, struct sockaddr_in &serv_addr)
     /*
      * If the server does not respond with a [DCCP Response] within the expected
      * time window, the client closes the connection. The DCCP protocol allows for
-     * a policy of retransmissions to be implemented. But for the sake of simplicity,
+     * policies of retransmissions to be implemented. But for the sake of simplicity,
      * we will not implement it here.
      */
     else
