@@ -15,9 +15,9 @@ jobs:
         os: [ubuntu-latest, windows-latest]
         include:
           - os: ubuntu-latest
-            gcc: g++ 
+            compiler: g++
           - os: windows-latest
-            gcc: g++.exe
+            compiler: g++.exe
 
     steps:
     - name: Checkout code
@@ -34,12 +34,27 @@ jobs:
       run: |
         choco install mingw
 
-    - name: Build project
-      run: |
-        ${{ matrix.gcc }} -o server server.cpp -std=c++17 -pthread
+    - name: Change to the Prática directory
+      run: cd Prática
 
-    - name: Upload artifact
+    - name: Build Server
+      run: |
+        ${{ matrix.compiler }} -o server server.cpp -std=c++17 -pthread
+      working-directory: Prática
+
+    - name: Build Client
+      run: |
+        ${{ matrix.compiler }} -o client client.cpp -std=c++17 -pthread
+      working-directory: Prática
+
+    - name: Upload Server Artifact
       uses: actions/upload-artifact@v2
       with:
         name: server-${{ matrix.os }}
-        path: ./server*
+        path: Prática/server*
+
+    - name: Upload Client Artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: client-${{ matrix.os }}
+        path: Prática/client*
