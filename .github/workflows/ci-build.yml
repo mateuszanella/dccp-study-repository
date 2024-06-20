@@ -16,8 +16,10 @@ jobs:
         include:
           - os: ubuntu-latest
             compiler: g++
+            suffix: linux
           - os: windows-latest
             compiler: g++.exe
+            suffix: windows
 
     steps:
     - name: Checkout code
@@ -39,22 +41,22 @@ jobs:
 
     - name: Build Server
       run: |
-        ${{ matrix.compiler }} -o server server.cpp -std=c++17 -pthread
+        ${{ matrix.compiler }} -o server-${{ matrix.suffix }} server.cpp -std=c++17 -pthread
       working-directory: Prática
 
     - name: Build Client
       run: |
-        ${{ matrix.compiler }} -o client client.cpp -std=c++17 -pthread
+        ${{ matrix.compiler }} -o client-${{ matrix.suffix }} client.cpp -std=c++17 -pthread
       working-directory: Prática
 
     - name: Upload Server Artifact
       uses: actions/upload-artifact@v2
       with:
         name: server-${{ matrix.os }}
-        path: Prática/server*
+        path: Prática/server-${{ matrix.suffix }}*
 
     - name: Upload Client Artifact
       uses: actions/upload-artifact@v2
       with:
         name: client-${{ matrix.os }}
-        path: Prática/client*
+        path: Prática/client-${{ matrix.suffix }}*
